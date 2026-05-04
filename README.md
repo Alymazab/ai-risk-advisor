@@ -64,7 +64,7 @@ Handles risk mitigation, prioritization, and response planning.
 
 ### 1. Clone the repository
 
-git clone https://github.com/YOUR_USERNAME/ai-risk-advisor.git  
+git clone https://github.com/Alymazab/ai-risk-advisor.git 
 cd ai-risk-advisor
 
 ### 2. Create .env from template
