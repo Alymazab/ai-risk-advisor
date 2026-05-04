@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+data/vectorstore/
+data/raw/*.pdf
+
+# VS Code
+.vscode/
