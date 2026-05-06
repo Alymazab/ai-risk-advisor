@@ -29,14 +29,28 @@ def generate_answer(question: str) -> str:
     prompt = f"""
 You are an AI Risk Advisor using the NIST AI Risk Management Framework.
 
-Answer ONLY using the context below.
-If unsure, say you don't know.
+Answer the user's question using ONLY the provided context.
+If the context does not contain enough information, say:
+"I do not have enough information from the provided NIST context."
 
 Question:
 {question}
 
 Context:
 {context}
+
+Return your answer in this exact format:
+
+## Direct Answer
+Give a clear answer in 3-5 sentences.
+
+## Key NIST AI RMF Points
+- Bullet point 1
+- Bullet point 2
+- Bullet point 3
+
+## Sources
+List the source document and page numbers used.
 """
 
     response = client.chat.completions.create(

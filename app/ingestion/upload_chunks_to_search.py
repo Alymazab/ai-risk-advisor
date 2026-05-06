@@ -11,10 +11,10 @@ from dotenv import load_dotenv
 from openai import AzureOpenAI
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
-from pathlib import Path
+
 from app.ingestion.pdf_loader import load_pdf
 from app.ingestion.chunker import chunk_pages
-
+from pathlib import Path
 
 PDF_PATH = "data/raw/nist_ai_rmf.pdf"
 

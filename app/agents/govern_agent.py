@@ -20,7 +20,7 @@ from app.rag.retriever import search
 from app.security.keyvault import get_secret
 
 def run_govern_agent(question: str) -> str:
-    load_dotenv()
+    load_dotenv(override=True)
 
     client = AzureOpenAI(
         api_key=get_secret("AZURE-OPENAI-API-KEY"),

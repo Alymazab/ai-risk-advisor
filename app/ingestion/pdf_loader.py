@@ -45,7 +45,7 @@ def load_pdf(file_path: str) -> List[Dict[str, Any]]:
                 {
                     "page_number": index,
                     "text": cleaned_text,
-                    "source": str(path),
+                    "source": path.name,
                 }
             )
 

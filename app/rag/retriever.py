@@ -13,6 +13,8 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 
+from app.security.keyvault import get_secret
+
 
 def get_query_embedding(client: AzureOpenAI, query: str):
     response = client.embeddings.create(
@@ -23,10 +25,13 @@ def get_query_embedding(client: AzureOpenAI, query: str):
 
 
 def search(query: str):
-    load_dotenv()
+    load_dotenv(override=True)
+
+    openai_api_key = get_secret("AZURE-OPENAI-API-KEY")
+    search_admin_key = get_secret("AZURE-SEARCH-ADMIN-KEY")
 
     openai_client = AzureOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        api_key=openai_api_key,
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
     )
@@ -34,7 +39,7 @@ def search(query: str):
     search_client = SearchClient(
         endpoint=os.getenv("AZURE_SEARCH_ENDPOINT"),
         index_name=os.getenv("AZURE_SEARCH_INDEX_NAME"),
-        credential=AzureKeyCredential(os.getenv("AZURE_SEARCH_ADMIN_KEY")),
+        credential=AzureKeyCredential(search_admin_key),
     )
 
     print(f"\nQuery: {query}")
