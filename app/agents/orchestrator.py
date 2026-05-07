@@ -21,6 +21,7 @@ from app.agents.map_agent import run_map_agent
 from app.agents.measure_agent import run_measure_agent
 from app.agents.manage_agent import run_manage_agent
 from app.security.keyvault import get_secret
+from app.agents.playbook_agent import run_playbook_agent
 
 def extract_unique_sources(*agent_outputs: str) -> str:
     """
@@ -49,7 +50,7 @@ def extract_unique_sources(*agent_outputs: str) -> str:
 
 
 def run_orchestrator(question: str) -> str:
-    load_dotenv()
+    load_dotenv(override=True)
 
     print("Running GOVERN agent...")
     govern_output = run_govern_agent(question)
@@ -69,6 +70,11 @@ def run_orchestrator(question: str) -> str:
         measure_output,
         manage_output,
     )
+    print("Running NIST Playbook agent...")
+    playbook_output = run_playbook_agent(
+        question,
+        "\n\n".join([govern_output, map_output, measure_output, manage_output]),
+    )
 
     client = AzureOpenAI(
         api_key=get_secret("AZURE-OPENAI-API-KEY"),
@@ -86,7 +92,7 @@ You will receive analysis from four specialist agents aligned with the NIST AI R
 - MANAGE
 
 Your job is to synthesize their findings into one clear executive-style advisory report.
-
+Important: The NIST Playbook section must be detailed and operational. Do not compress it into generic bullets.
 User question:
 {question}
 
@@ -102,6 +108,9 @@ MEASURE agent output:
 MANAGE agent output:
 {manage_output}
 
+NIST AI RMF Playbook agent output:
+{playbook_output}
+
 Verified source pages extracted programmatically:
 {verified_sources}
 
@@ -110,25 +119,72 @@ Return your final answer in this exact format:
 # AI Risk Advisory Report
 
 ## Executive Summary
-Summarize the overall risk posture in 4-6 sentences.
+Write a polished 5-7 sentence executive summary. Include the overall risk posture, business impact, and why this AI use case requires governance.
+
+## Scenario Classification
+- Industry / Domain:
+- AI System Type:
+- Primary Users:
+- Affected Stakeholders:
+- Risk Sensitivity:
+- Likely Deployment Environment:
+
+## Risk Category Overview
+Create a concise overview of the most relevant risk categories for this scenario, such as:
+- Governance and accountability
+- Privacy and data protection
+- Cybersecurity and abuse
+- Bias and fairness
+- Transparency and explainability
+- Reliability and hallucination
+- Human oversight
+- Monitoring and incident response
+- Regulatory / compliance exposure
 
 ## GOVERN Findings
-Summarize governance risks and controls.
+Summarize governance risks, accountability gaps, oversight needs, policies, ownership, and review processes.
 
 ## MAP Findings
-Summarize context, stakeholders, impacts, and risk sources.
+Summarize context, stakeholders, intended use, foreseeable misuse, affected groups, system boundaries, and impact areas.
 
 ## MEASURE Findings
-Summarize metrics, testing, monitoring, and evaluation needs.
+Summarize metrics, testing, evaluation, validation, monitoring, and trustworthiness measurement needs.
 
 ## MANAGE Findings
-Summarize mitigation, prioritization, and residual risk handling.
+Summarize mitigation, prioritization, risk treatment, residual risk handling, escalation, and ongoing improvement.
+
+## Risk Register
+Create a markdown table with these columns:
+| Risk | Category | Likelihood | Impact | Priority | Recommended Control |
+
+Include 6-8 realistic risks.
 
 ## Priority Recommendations
-- Recommendation 1
-- Recommendation 2
-- Recommendation 3
-- Recommendation 4
+Provide 5 strong recommendations. Each one should be practical and implementation-focused.
+
+## 30-60-90 Day Roadmap
+Create a practical roadmap:
+- First 30 days:
+- Days 31-60:
+- Days 61-90:
+
+## NIST Playbook Implementation Guidance
+Use the Playbook agent output as the primary source for this section.
+Preserve rich implementation detail.
+Include:
+- Playbook Retrieval Summary
+- Most Relevant Playbook Themes
+- GOVERN Implementation Guidance
+- MAP Implementation Guidance
+- MEASURE Implementation Guidance
+- MANAGE Implementation Guidance
+- Playbook-Informed Control Enhancements table
+- Playbook-Informed Questions for Leadership
+- Playbook Sources
+Do not reduce this section to a short bullet list.
+
+## Executive Decision
+State whether the system should proceed, proceed with controls, require redesign, or be paused pending risk treatment.
 
 ## Sources
 Use ONLY the verified source pages provided above. Do not invent additional sources.
