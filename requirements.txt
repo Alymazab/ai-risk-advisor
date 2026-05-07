@@ -71,3 +71,4 @@ websockets==16.0
 requests
 beautifulsoup4
 reportlab
+matplotlib
