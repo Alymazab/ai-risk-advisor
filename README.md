@@ -1,185 +1,197 @@
-# AI Risk Advisor (NIST AI RMF)
+# AI Risk Advisor
 
-A multi-agent AI system that analyzes AI risk scenarios using the NIST AI Risk Management Framework (AI RMF 1.0). Built with Azure OpenAI, Azure AI Search, and Azure Key Vault.
+Live Demo:  
+https://nist-ai-risk-advisor-encddzhaedgvd5hb.canadacentral-01.azurewebsites.net/
 
----
+AI Risk Advisor is a multi-agent AI governance and risk assessment platform built using Azure AI services and aligned with the NIST AI Risk Management Framework (AI RMF 1.0).
 
-## Overview
-
-AI Risk Advisor translates the NIST AI RMF into an executable multi-agent system.
-
-Given a real-world scenario (e.g., a customer-facing chatbot), the system:
-
-1. Retrieves relevant framework context using Retrieval-Augmented Generation (RAG)
-2. Runs specialized agents aligned with NIST functions:
-   - GOVERN
-   - MAP
-   - MEASURE
-   - MANAGE
-3. Produces a structured AI Risk Advisory Report
+The platform analyzes AI deployment scenarios, evaluates governance and operational risks, generates executive-style advisory reports, visualizes enterprise risk posture, and exports professional PDF reports with charts and intelligence summaries.
 
 ---
 
-## Architecture
+# Features
 
-User Query  
-→ Retriever (Azure AI Search + Embeddings)  
-→ Specialist Agents (GOVERN, MAP, MEASURE, MANAGE)  
-→ Orchestrator Agent  
-→ Final AI Risk Advisory Report
+## Multi-Agent AI Architecture
 
----
+Specialized AI agents aligned with NIST AI RMF functions:
 
-## Tech Stack
-
-- Python
-- Azure OpenAI (chat completions and embeddings)
-- Azure AI Search (hybrid + vector search)
-- Azure Key Vault (secure secret management)
-- Streamlit (UI)
+- GOVERN Agent
+- MAP Agent
+- MEASURE Agent
+- MANAGE Agent
+- Orchestrator Agent
+- Risk Scoring Agent
+- NIST Playbook Intelligence Agent
 
 ---
 
-## Agents (NIST AI RMF)
+## Enterprise Risk Dashboard
 
-GOVERN  
-Focuses on governance, accountability, and organizational controls.
+Interactive dashboard with:
 
-MAP  
-Identifies context, stakeholders, impacts, and risk sources.
-
-MEASURE  
-Evaluates metrics, testing strategies, and monitoring requirements.
-
-MANAGE  
-Handles risk mitigation, prioritization, and response planning.
+- Executive risk scorecards
+- NIST function scoring
+- Risk radar chart
+- Likelihood vs impact matrix
+- Risk posture visualization
+- Intelligence summaries
+- Executive decision recommendations
 
 ---
 
-## Features
+## PDF Report Export
 
-- Multi-agent architecture aligned to a real regulatory framework
-- Retrieval-Augmented Generation (RAG)
-- Source-grounded responses with page references
-- Secure secret handling via Azure Key Vault
-- Modular and extensible design
+Generate downloadable executive-ready PDF reports including:
 
----
-
-## Security
-
-- No secrets stored in code or repository
-- All sensitive keys retrieved from Azure Key Vault
-- Uses DefaultAzureCredential for secure authentication
+- Risk analysis
+- Governance findings
+- Visual charts
+- Risk matrix
+- Recommendations
+- Source references
+- Scoring rationale
 
 ---
 
-## Setup
+# Azure AI Services Integration
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Alymazab/ai-risk-advisor.git
-cd ai-risk-advisor
-```
-
----
-
-### 2. Create .env from template
-
-Copy `.env.example` to `.env` and fill in the following values:
-
-```env
-AZURE_KEY_VAULT_URL=
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_API_VERSION=2024-02-01
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=
-AZURE_OPENAI_CHAT_DEPLOYMENT=
-AZURE_SEARCH_ENDPOINT=
-AZURE_SEARCH_INDEX_NAME=
-```
-
----
-
-### 3. Azure Setup
-
-You need the following resources:
+Built using:
 
 - Azure OpenAI
 - Azure AI Search
 - Azure Key Vault
-
-Add the following secrets to Azure Key Vault:
-
-```
-AZURE-OPENAI-API-KEY
-AZURE-SEARCH-ADMIN-KEY
-```
+- Azure App Service
+- Streamlit
+- Python
 
 ---
 
-## Running the Project
+# Architecture
 
-### Upload and index data
+## Workflow
+
+1. User submits AI deployment scenario
+2. Specialized agents analyze the scenario
+3. Azure AI Search retrieves NIST RMF context
+4. NIST Playbook intelligence enriches recommendations
+5. Orchestrator synthesizes enterprise report
+6. Risk scoring engine evaluates posture
+7. Dashboard visualizes results
+8. PDF export generates executive report
+
+---
+
+# Tech Stack
+
+## Backend
+
+- Python
+- Streamlit
+- OpenAI SDK
+- Azure SDK
+- ReportLab
+- Matplotlib
+
+## Azure Services
+
+- Azure OpenAI
+- Azure AI Search
+- Azure Key Vault
+- Azure App Service
+
+## AI Governance Standards
+
+- NIST AI RMF 1.0
+- NIST AI Playbook
+
+---
+
+# Example Scenarios
+
+- Financial AI Chatbot
+- Healthcare Diagnosis AI
+- AI Hiring Assistant
+- Enterprise Copilot
+- AI Fraud Detection
+- Autonomous Decision Systems
+
+---
+
+# Security Design
+
+- Azure Key Vault secret management
+- Managed Identity authentication
+- Environment variable isolation
+- Retrieval-grounded responses
+- Verified source extraction
+- Hallucination reduction prompting
+
+---
+
+# Screenshots
+
+## Enterprise Dashboard
+
+Add dashboard screenshot here.
+
+## Risk Radar Visualization
+
+Add radar chart screenshot here.
+
+## Executive PDF Report
+
+Add PDF export screenshot here.
+
+---
+
+# Local Development
+
+## Clone Repository
 
 ```bash
-python -m app.ingestion.upload_chunks_to_search
-```
+git clone https://github.com/Alymazab/ai-risk-advisor.git
+cd ai-risk-advisor
+Create Virtual Environment
+python -m venv .venv
+Activate Environment
+Windows
+.venv\Scripts\activate
+Linux / macOS
+source .venv/bin/activate
+Install Dependencies
+pip install -r requirements.txt
+Environment Variables
 
-### Run orchestrator (CLI)
+Create a .env file:
 
-```bash
-python -m app.agents.orchestrator
-```
+AZURE_KEY_VAULT_URL=
 
-### Run UI
+AZURE_OPENAI_ENDPOINT=
+AZURE_OPENAI_EMBEDDING_DEPLOYMENT=
+AZURE_OPENAI_CHAT_DEPLOYMENT=
+AZURE_OPENAI_API_VERSION=
 
-```bash
+AZURE_SEARCH_ENDPOINT=
+AZURE_SEARCH_INDEX_NAME=
+Run Locally
 streamlit run app/ui.py
-```
+Deployment
 
----
+This project is deployed on Azure App Service using:
 
-## Example Use Case
+GitHub Actions
+Azure App Service Linux
+Managed Identity
+Azure Key Vault integration
+Future Enhancements
+Live internet threat intelligence
+OWASP LLM attack simulation
+Real-time compliance mapping
+Advanced risk analytics
+SOC integration
+Executive governance analytics
+RAG evaluation metrics
+Threat trend monitoring
+Resume Bullet
 
-Input:
-
-Assess the AI risks of deploying a customer-facing AI chatbot for a financial services company.
-
-Output:
-
-- Executive Summary  
-- GOVERN Findings  
-- MAP Findings  
-- MEASURE Findings  
-- MANAGE Findings  
-- Actionable Recommendations  
-- Verified NIST source references  
-
----
-
-## Future Improvements
-
-- Managed Identity (removing API keys entirely)
-- Agent confidence scoring
-- Prompt injection defenses
-- Evaluation framework for outputs
-- Deployment to Azure App Service or Container Apps
-
----
-
-## Why this project matters
-
-This project demonstrates:
-
-- AI system design using a real-world governance framework  
-- Multi-agent orchestration  
-- RAG pipelines using enterprise cloud tools  
-- Secure architecture with Azure Key Vault  
-- Practical implementation of AI risk management  
-
----
-
-## License
-
-License to be added.
+Built an enterprise-style multi-agent AI governance and risk assessment platform using Azure OpenAI, Azure AI Search, Azure Key Vault, and Streamlit, aligned with the NIST AI RMF to generate executive AI risk reports, interactive dashboards, and downloadable PDF intelligence assessments.
