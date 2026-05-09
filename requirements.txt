@@ -72,3 +72,6 @@ requests
 beautifulsoup4
 reportlab
 matplotlib
+fastapi
+uvicorn
+beautifulsoup4
