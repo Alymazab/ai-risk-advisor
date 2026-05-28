@@ -114,59 +114,98 @@ NIST AI RMF Playbook agent output:
 Verified source pages extracted programmatically:
 {verified_sources}
 
+Important writing rules:
+- Do not write generic AI safety language.
+- Be specific to the scenario.
+- Write like a senior AI risk consultant.
+- Use concrete controls, owners, and evidence.
+- Make the report useful for an executive review meeting.
+- The final report should feel like a professional consulting deliverable, not a chatbot answer.
+
 Return your final answer in this exact format:
 
 # AI Risk Advisory Report
 
-## Executive Summary
-Write a polished 5-7 sentence executive summary. Include the overall risk posture, business impact, and why this AI use case requires governance.
+## Executive Brief
+Write this like a board-facing risk memo. Be specific, direct, and opinionated.
+Include:
+- what the AI system does
+- why the risk is material
+- what could go wrong operationally, legally, financially, or reputationally
+- whether the system should proceed
+- the top 3 conditions required before deployment
+
+## Risk Posture Snapshot
+Create a concise snapshot:
+- Overall Risk:
+- Business Criticality:
+- Regulatory Exposure:
+- Data Sensitivity:
+- Automation Impact:
+- Human Oversight Requirement:
+- Deployment Recommendation:
 
 ## Scenario Classification
 - Industry / Domain:
 - AI System Type:
 - Primary Users:
 - Affected Stakeholders:
+- Data Types Involved:
+- External Dependencies:
 - Risk Sensitivity:
 - Likely Deployment Environment:
 
-## Risk Category Overview
-Create a concise overview of the most relevant risk categories for this scenario, such as:
-- Governance and accountability
-- Privacy and data protection
-- Cybersecurity and abuse
-- Bias and fairness
-- Transparency and explainability
-- Reliability and hallucination
-- Human oversight
-- Monitoring and incident response
-- Regulatory / compliance exposure
+## Critical Risk Narrative
+Write a strong narrative explaining the most serious risk paths.
+Do not be generic.
+Explain how failures could occur in the real world.
+Include adversarial misuse, data leakage, hallucination, automation overreliance, compliance failure, and governance breakdown where relevant.
 
-## GOVERN Findings
-Summarize governance risks, accountability gaps, oversight needs, policies, ownership, and review processes.
+## Top Enterprise Risks
+Create a ranked table:
+| Rank | Risk | Why It Matters | Business Impact | Control Priority |
 
-## MAP Findings
-Summarize context, stakeholders, intended use, foreseeable misuse, affected groups, system boundaries, and impact areas.
+Include 8-10 risks.
 
-## MEASURE Findings
-Summarize metrics, testing, evaluation, validation, monitoring, and trustworthiness measurement needs.
+## NIST AI RMF Analysis
 
-## MANAGE Findings
-Summarize mitigation, prioritization, risk treatment, residual risk handling, escalation, and ongoing improvement.
+### GOVERN
+Explain governance weaknesses, accountability gaps, ownership model, approval gates, escalation paths, audit needs, and policy requirements.
+
+### MAP
+Explain system context, stakeholders, affected groups, data dependencies, third-party dependencies, misuse scenarios, and impact boundaries.
+
+### MEASURE
+Explain what must be tested before deployment:
+- hallucination rate
+- prompt injection resistance
+- data leakage testing
+- bias/fairness testing
+- security testing
+- performance reliability
+- human override effectiveness
+- monitoring metrics
+
+### MANAGE
+Explain how risks should be treated:
+- mitigation plan
+- incident response
+- residual risk acceptance
+- human escalation
+- rollback/decommissioning triggers
+- post-deployment monitoring
 
 ## Risk Register
-Create a markdown table with these columns:
-| Risk | Category | Likelihood | Impact | Priority | Recommended Control |
+Create a detailed markdown table:
+| Risk | Category | Likelihood | Impact | Priority | Detection Method | Recommended Control | Owner |
 
-Include 6-8 realistic risks.
+Include 10-12 realistic risks.
 
-## Priority Recommendations
-Provide 5 strong recommendations. Each one should be practical and implementation-focused.
+## Control Implementation Plan
+Create a detailed markdown table:
+| Control | NIST Function | Implementation Detail | Evidence Required | Owner | Timeline |
 
-## 30-60-90 Day Roadmap
-Create a practical roadmap:
-- First 30 days:
-- Days 31-60:
-- Days 61-90:
+Include at least 10 controls.
 
 ## NIST Playbook Implementation Guidance
 Use the Playbook agent output as the primary source for this section.
@@ -181,13 +220,29 @@ Include:
 - Playbook-Informed Control Enhancements table
 - Playbook-Informed Questions for Leadership
 - Playbook Sources
-Do not reduce this section to a short bullet list.
+
+Do not reduce this section to generic bullets.
+
+## 30-60-90 Day Execution Roadmap
+Create a practical roadmap:
+- First 30 days:
+- Days 31-60:
+- Days 61-90:
+
+Each phase should include governance, testing, security, monitoring, and stakeholder actions.
 
 ## Executive Decision
-State whether the system should proceed, proceed with controls, require redesign, or be paused pending risk treatment.
+Choose one:
+- Proceed
+- Proceed with controls
+- Redesign required
+- Pause deployment
+
+Then explain why in 4-6 sentences.
 
 ## Sources
-Use ONLY the verified source pages provided above. Do not invent additional sources.
+Use ONLY the verified source pages provided above and Playbook source URLs.
+Do not invent additional sources.
 """
 
     response = client.chat.completions.create(
