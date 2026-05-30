@@ -1,13 +1,9 @@
-"""
-PDF report generator for AI Risk Advisor.
-"""
-
-from io import BytesIO
-import tempfile
-from pathlib import Path
 from datetime import datetime
+from io import BytesIO
+import re
 
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -17,100 +13,146 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    Image,
     PageBreak,
+    Image,
 )
 
 
-def _clean_text(text: str) -> str:
-    return (
-        text.replace("•", "-")
-        .replace("–", "-")
-        .replace("—", "-")
-        .replace("✔", "-")
-        .replace("→", "->")
+BRAND_DARK = colors.HexColor("#0f172a")
+BRAND_GREEN = colors.HexColor("#047857")
+BRAND_LIGHT = colors.HexColor("#f8fafc")
+BORDER = colors.HexColor("#cbd5e1")
+
+
+def clean_markdown(text: str) -> str:
+    if not text:
+        return ""
+
+    text = text.replace("**", "")
+    text = text.replace("### ", "")
+    text = text.replace("## ", "")
+    text = text.replace("# ", "")
+    text = text.replace("–", "-")
+    text = text.replace("—", "-")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+
+    return text.strip()
+
+
+def fig_to_image(fig, width=6.2 * inch, height=3.6 * inch):
+    buffer = BytesIO()
+    fig.savefig(buffer, format="png", dpi=180, bbox_inches="tight")
+    buffer.seek(0)
+    return Image(buffer, width=width, height=height)
+
+
+def section_title(text, styles):
+    return Paragraph(clean_markdown(text), styles["SectionTitle"])
+
+
+def body_text(text, styles):
+    return Paragraph(clean_markdown(text).replace("\n", "<br/>"), styles["BodyTextCustom"])
+
+
+def build_kpi_table(risk_score):
+    data = [
+        ["Overall Risk", risk_score.get("overall_risk_level", "Unknown")],
+        ["Overall Score", f"{risk_score.get('overall_score', 0)}/100"],
+        ["Likelihood", f"{risk_score.get('likelihood_score', 0)}/100"],
+        ["Impact", f"{risk_score.get('impact_score', 0)}/100"],
+        ["Executive Decision", risk_score.get("executive_decision", "Review required")],
+    ]
+
+    table = Table(data, colWidths=[2.2 * inch, 4.8 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), BRAND_DARK),
+                ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 11),
+                ("BACKGROUND", (1, 0), (1, -1), BRAND_LIGHT),
+                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+                ("PADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
     )
+    return table
 
 
-def _add_markdown_to_story(report_text: str, story: list, styles):
-    lines = _clean_text(report_text).splitlines()
-    table_buffer = []
+def parse_markdown_table(lines, start_index):
+    table_lines = []
+    i = start_index
 
-    def flush_table():
-        nonlocal table_buffer
+    while i < len(lines) and lines[i].strip().startswith("|"):
+        table_lines.append(lines[i].strip())
+        i += 1
 
-        if not table_buffer:
-            return
+    rows = []
+    for line in table_lines:
+        if re.match(r"^\|\s*-+", line):
+            continue
 
-        rows = []
-        for line in table_buffer:
-            parts = [p.strip() for p in line.strip("|").split("|")]
-            if all(set(p) <= {"-", " "} for p in parts):
-                continue
-            rows.append(parts)
+        cells = [clean_markdown(cell.strip()) for cell in line.strip("|").split("|")]
+        if cells:
+            rows.append(cells)
 
-        if rows:
-            table = Table(rows, repeatRows=1)
-            table.setStyle(
-                TableStyle(
-                    [
-                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-                        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-                        ("FONTSIZE", (0, 0), (-1, -1), 7),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-                    ]
-                )
-            )
-            story.append(table)
-            story.append(Spacer(1, 0.18 * inch))
+    return rows, i
 
-        table_buffer = []
 
-    for line in lines:
-        line = line.strip()
+def markdown_to_flowables(markdown_text, styles):
+    flowables = []
+    lines = markdown_text.splitlines()
+    i = 0
+
+    while i < len(lines):
+        line = lines[i].strip()
 
         if not line:
-            flush_table()
-            story.append(Spacer(1, 0.08 * inch))
+            flowables.append(Spacer(1, 0.08 * inch))
+            i += 1
             continue
 
         if line.startswith("|"):
-            table_buffer.append(line)
+            rows, next_i = parse_markdown_table(lines, i)
+
+            if rows:
+                table = Table(rows, repeatRows=1)
+                table.setStyle(
+                    TableStyle(
+                        [
+                            ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
+                            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                            ("FONTSIZE", (0, 0), (-1, -1), 7),
+                            ("GRID", (0, 0), (-1, -1), 0.35, BORDER),
+                            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, BRAND_LIGHT]),
+                            ("PADDING", (0, 0), (-1, -1), 4),
+                        ]
+                    )
+                )
+                flowables.append(table)
+                flowables.append(Spacer(1, 0.18 * inch))
+
+            i = next_i
             continue
 
-        flush_table()
+        if line.startswith("## ") or line.startswith("### "):
+            flowables.append(Spacer(1, 0.16 * inch))
+            flowables.append(section_title(line.replace("#", "").strip(), styles))
+            i += 1
+            continue
 
-        if line.startswith("# "):
-            story.append(Paragraph(line[2:], styles["TitleCustom"]))
-            story.append(Spacer(1, 0.15 * inch))
+        if line.startswith("- "):
+            flowables.append(Paragraph("• " + clean_markdown(line[2:]), styles["BodyTextCustom"]))
+            i += 1
+            continue
 
-        elif line.startswith("## "):
-            story.append(Spacer(1, 0.12 * inch))
-            story.append(Paragraph(line[3:], styles["Heading2Custom"]))
+        flowables.append(body_text(line, styles))
+        i += 1
 
-        elif line.startswith("### "):
-            story.append(Paragraph(line[4:], styles["Heading3Custom"]))
-
-        elif line.startswith("- "):
-            story.append(Paragraph("• " + line[2:], styles["BodyCustom"]))
-
-        elif line[:2].isdigit() and ". " in line[:5]:
-            story.append(Paragraph(line, styles["BodyCustom"]))
-
-        else:
-            story.append(Paragraph(line, styles["BodyCustom"]))
-
-    flush_table()
-
-
-def _save_chart(fig, filename: str) -> str:
-    path = Path(tempfile.gettempdir()) / filename
-    fig.savefig(path, bbox_inches="tight", dpi=180)
-    return str(path)
+    return flowables
 
 
 def generate_pdf_report(
@@ -133,137 +175,108 @@ def generate_pdf_report(
         bottomMargin=0.55 * inch,
     )
 
-    base_styles = getSampleStyleSheet()
+    styles = getSampleStyleSheet()
 
-    styles = {
-        "TitleCustom": ParagraphStyle(
-            "TitleCustom",
-            parent=base_styles["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=22,
-            leading=26,
-            textColor=colors.HexColor("#0f172a"),
-            spaceAfter=10,
-        ),
-        "Heading2Custom": ParagraphStyle(
-            "Heading2Custom",
-            parent=base_styles["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=15,
-            leading=18,
-            textColor=colors.HexColor("#14532d"),
-            spaceBefore=8,
-            spaceAfter=6,
-        ),
-        "Heading3Custom": ParagraphStyle(
-            "Heading3Custom",
-            parent=base_styles["Heading3"],
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=15,
-            textColor=colors.HexColor("#166534"),
-            spaceBefore=6,
-            spaceAfter=4,
-        ),
-        "BodyCustom": ParagraphStyle(
-            "BodyCustom",
-            parent=base_styles["BodyText"],
-            fontName="Helvetica",
-            fontSize=9,
-            leading=12,
-            textColor=colors.HexColor("#111827"),
-            spaceAfter=4,
-        ),
-        "Small": ParagraphStyle(
-            "Small",
-            parent=base_styles["BodyText"],
-            fontName="Helvetica",
-            fontSize=8,
-            leading=10,
-            textColor=colors.HexColor("#475569"),
-        ),
-    }
-
-    story = []
-
-    generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-    story.append(Paragraph("AI Risk Advisory Report", styles["TitleCustom"]))
-    story.append(Paragraph(f"Generated: {generated_at}", styles["Small"]))
-    story.append(Spacer(1, 0.2 * inch))
-
-    summary_data = [
-        ["Overall Risk", risk_score.get("overall_risk_level", "Unknown")],
-        ["Overall Score", f"{risk_score.get('overall_score', 0)}/100"],
-        ["Likelihood", f"{risk_score.get('likelihood_score', 0)}/100"],
-        ["Impact", f"{risk_score.get('impact_score', 0)}/100"],
-        ["Executive Decision", risk_score.get("executive_decision", "Review required")],
-    ]
-
-    summary_table = Table(summary_data, colWidths=[1.8 * inch, 4.6 * inch])
-    summary_table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#0f172a")),
-                ("TEXTCOLOR", (0, 0), (0, -1), colors.white),
-                ("BACKGROUND", (1, 0), (1, -1), colors.HexColor("#f8fafc")),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ]
+    styles.add(
+        ParagraphStyle(
+            name="CoverTitle",
+            parent=styles["Title"],
+            fontSize=28,
+            leading=34,
+            alignment=TA_CENTER,
+            textColor=BRAND_DARK,
+            spaceAfter=20,
         )
     )
 
-    story.append(summary_table)
-    story.append(Spacer(1, 0.25 * inch))
+    styles.add(
+        ParagraphStyle(
+            name="SectionTitle",
+            parent=styles["Heading2"],
+            fontSize=16,
+            leading=20,
+            textColor=BRAND_GREEN,
+            spaceBefore=14,
+            spaceAfter=8,
+        )
+    )
 
-    story.append(Paragraph("Assessed Scenario", styles["Heading2Custom"]))
-    story.append(Paragraph(_clean_text(question), styles["BodyCustom"]))
-    story.append(PageBreak())
+    styles.add(
+        ParagraphStyle(
+            name="BodyTextCustom",
+            parent=styles["BodyText"],
+            fontSize=9.5,
+            leading=13,
+            alignment=TA_LEFT,
+            spaceAfter=6,
+        )
+    )
 
-    story.append(Paragraph("Enterprise Risk Dashboard", styles["Heading2Custom"]))
+    elements = []
 
-    chart_paths = [
-        _save_chart(bar_chart_fig, "ai_risk_bar_chart.png"),
-        _save_chart(radar_chart_fig, "ai_risk_radar_chart.png"),
-        _save_chart(matrix_chart_fig, "ai_risk_matrix_chart.png"),
-    ]
+    # Cover page
+    elements.append(Paragraph("AI Risk Advisory Report", styles["CoverTitle"]))
+    elements.append(
+        Paragraph(
+            f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            styles["BodyTextCustom"],
+        )
+    )
+    elements.append(Spacer(1, 0.25 * inch))
+    elements.append(build_kpi_table(risk_score))
+    elements.append(Spacer(1, 0.35 * inch))
 
-    for chart_path in chart_paths:
-        story.append(Image(chart_path, width=6.4 * inch, height=3.8 * inch))
-        story.append(Spacer(1, 0.18 * inch))
+    elements.append(section_title("Assessed Scenario", styles))
+    elements.append(body_text(question, styles))
 
-    story.append(PageBreak())
+    elements.append(PageBreak())
 
-    story.append(Paragraph("Full Advisory Report", styles["Heading2Custom"]))
-    _add_markdown_to_story(report, story, styles)
+    # Dashboard page
+    elements.append(section_title("Executive Risk Dashboard", styles))
+    elements.append(Spacer(1, 0.15 * inch))
+    elements.append(fig_to_image(bar_chart_fig, width=6.5 * inch, height=3.1 * inch))
+    elements.append(Spacer(1, 0.25 * inch))
+    elements.append(fig_to_image(radar_chart_fig, width=5.4 * inch, height=4.0 * inch))
 
-    story.append(PageBreak())
-    story.append(Paragraph("LLM Risk Scoring Rationale", styles["Heading2Custom"]))
-    story.append(Paragraph(_clean_text(risk_score.get("scoring_rationale", "No rationale returned.")), styles["BodyCustom"]))
+    elements.append(PageBreak())
 
-    story.append(Paragraph("NIST Function Scores", styles["Heading2Custom"]))
+    elements.append(section_title("Likelihood vs Impact Matrix", styles))
+    elements.append(fig_to_image(matrix_chart_fig, width=5.3 * inch, height=4.8 * inch))
+
+    elements.append(PageBreak())
+
+    # Report body
+    elements.append(section_title("Full Advisory Report", styles))
+    elements.extend(markdown_to_flowables(report, styles))
+
+    elements.append(PageBreak())
+
+    # Scoring appendix
+    elements.append(section_title("LLM Risk Scoring Rationale", styles))
+    elements.append(body_text(risk_score.get("scoring_rationale", "No rationale returned."), styles))
+
+    elements.append(section_title("NIST Function Scores", styles))
+
     score_rows = [["Function", "Score"]]
-    for key, value in scores.items():
-        score_rows.append([key, f"{value}/100"])
+    for name, value in scores.items():
+        score_rows.append([name, f"{value}/100"])
 
-    score_table = Table(score_rows, colWidths=[3 * inch, 2 * inch])
+    score_table = Table(score_rows, colWidths=[2.5 * inch, 2.0 * inch])
     score_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("BACKGROUND", (0, 0), (-1, 0), BRAND_DARK),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+                ("PADDING", (0, 0), (-1, -1), 7),
             ]
         )
     )
-    story.append(score_table)
 
-    doc.build(story)
+    elements.append(score_table)
 
-    pdf = buffer.getvalue()
-    buffer.close()
-    return pdf
+    doc.build(elements)
+
+    buffer.seek(0)
+    return buffer.getvalue()

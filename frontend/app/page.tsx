@@ -22,16 +22,32 @@ import {
 import {
   Bar,
   BarChart,
+  Cell,
+  Pie,
+  PieChart,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
   Radar,
   RadarChart,
+  RadialBar,
+  RadialBarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+
+type DashboardMetrics = {
+  overall_score: number;
+  likelihood: number;
+  impact: number;
+  risk_level: string;
+  executive_decision: string;
+  category_distribution: { name: string; value: number }[];
+  top_risks: { rank: number; risk: string; score: number }[];
+  maturity_scores: { name: string; score: number }[];
+};
 
 type AnalyzeResponse = {
   report: string;
@@ -45,6 +61,7 @@ type AnalyzeResponse = {
     top_risk_categories?: string[];
   };
   function_scores: Record<string, number>;
+  dashboard_metrics?: DashboardMetrics;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
@@ -64,6 +81,11 @@ const scenarios = [
     title: "AI Hiring Assistant",
     label: "HR",
     text: "Assess the AI risks of deploying an AI hiring assistant that screens resumes, ranks candidates, and recommends hiring decisions for a large enterprise operating across multiple regions.",
+  },
+  {
+    title: "Defense AI Copilot",
+    label: "Defense",
+    text: "Assess the AI risks of deploying a multimodal generative AI platform for a global defense contractor that processes classified and sensitive engineering documents, analyzes satellite imagery, generates technical maintenance procedures, and assists employees through an internal AI copilot integrated with enterprise systems, third-party APIs, cloud infrastructure, and legacy operational technology environments across multiple international regions.",
   },
 ];
 
@@ -146,10 +168,12 @@ export default function Home() {
   const sections = useMemo(() => parseReport(data?.report || ""), [data]);
 
   const risk = data?.risk_score;
-  const overallLevel = risk?.overall_risk_level || "Not analyzed";
-  const overallScore = risk?.overall_score ?? 0;
-  const likelihood = risk?.likelihood_score ?? 0;
-  const impact = risk?.impact_score ?? 0;
+  const metrics = data?.dashboard_metrics;
+
+  const overallLevel = metrics?.risk_level || risk?.overall_risk_level || "Not analyzed";
+  const overallScore = metrics?.overall_score ?? risk?.overall_score ?? 0;
+  const likelihood = metrics?.likelihood ?? risk?.likelihood_score ?? 0;
+  const impact = metrics?.impact ?? risk?.impact_score ?? 0;
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -190,6 +214,7 @@ export default function Home() {
             likelihood={likelihood}
             impact={impact}
             loading={loading}
+            metrics={metrics}
           />
         )}
 
@@ -266,7 +291,7 @@ function ScenarioPanel({
         <h2 className="text-2xl font-black">Scenario Console</h2>
       </div>
 
-      <div className="mb-4 grid gap-3 md:grid-cols-3">
+      <div className="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {scenarios.map((item) => (
           <button
             key={item.title}
@@ -426,6 +451,7 @@ function Dashboard({
   likelihood,
   impact,
   loading,
+  metrics,
 }: {
   data: AnalyzeResponse | null;
   chartData: { name: string; score: number }[];
@@ -434,6 +460,7 @@ function Dashboard({
   likelihood: number;
   impact: number;
   loading: boolean;
+  metrics?: DashboardMetrics;
 }) {
   if (!data && !loading) {
     return (
@@ -453,7 +480,7 @@ function Dashboard({
         <Loader2 className="mx-auto h-12 w-12 animate-spin text-emerald-300" />
         <h2 className="mt-4 text-2xl font-black">Generating enterprise assessment...</h2>
         <p className="mt-2 text-slate-400">
-          Retrieving NIST context, running agents, scoring risk, and preparing dashboard.
+          Running agents, scoring risk, and preparing executive dashboard.
         </p>
       </section>
     );
@@ -461,12 +488,74 @@ function Dashboard({
 
   return (
     <section className="mt-6 space-y-6">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Metric icon={<AlertTriangle />} label="Overall Risk" value={overallLevel} />
-        <Metric icon={<Gauge />} label="Risk Score" value={`${overallScore}/100`} />
-        <Metric icon={<Activity />} label="Likelihood" value={`${likelihood}/100`} />
-        <Metric icon={<Zap />} label="Impact" value={`${impact}/100`} />
+      <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+        <RiskGauge score={overallScore} level={overallLevel} />
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Metric icon={<Gauge />} label="Risk Score" value={`${overallScore}/100`} />
+          <Metric icon={<Activity />} label="Likelihood" value={`${likelihood}/100`} />
+          <Metric icon={<Zap />} label="Impact" value={`${impact}/100`} />
+          <Metric
+            icon={<ShieldCheck />}
+            label="Decision"
+            value={metrics?.executive_decision || data?.risk_score.executive_decision || "Review"}
+          />
+        </div>
       </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <ExecutiveDecisionCard
+          level={overallLevel}
+          score={overallScore}
+          decision={metrics?.executive_decision || data?.risk_score.executive_decision || "Review required"}
+        />
+
+        {metrics && <RiskDistribution data={metrics.category_distribution} />}
+      </div>
+
+      {metrics && (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Panel title="Top 5 Enterprise Risks" icon={<AlertTriangle className="h-5 w-5" />}>
+            <div className="space-y-3">
+              {metrics.top_risks.map((item) => (
+                <div key={item.rank} className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-black text-white">
+                      {item.rank}. {item.risk}
+                    </p>
+                    <p className="text-xl font-black text-emerald-300">{item.score}</p>
+                  </div>
+                  <div className="mt-3 h-2 rounded-full bg-slate-800">
+                    <div
+                      className="h-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.6)]"
+                      style={{ width: `${item.score}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+
+          <Panel title="Control Maturity" icon={<Gauge className="h-5 w-5" />}>
+            <div className="space-y-5">
+              {metrics.maturity_scores.map((item) => (
+                <div key={item.name}>
+                  <div className="mb-2 flex justify-between text-sm font-bold">
+                    <span>{item.name}</span>
+                    <span className="text-emerald-300">{item.score}%</span>
+                  </div>
+                  <div className="h-4 rounded-full bg-slate-800">
+                    <div
+                      className="h-4 rounded-full bg-gradient-to-r from-emerald-500 to-lime-300"
+                      style={{ width: `${item.score}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Panel title="NIST Function Scores" icon={<Activity className="h-5 w-5" />}>
@@ -475,7 +564,7 @@ function Dashboard({
               <XAxis dataKey="name" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" domain={[0, 100]} />
               <Tooltip />
-              <Bar dataKey="score" fill="#34d399" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="score" fill="#34d399" radius={[10, 10, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -497,29 +586,131 @@ function Dashboard({
           <p className="text-sm leading-7 text-slate-300">
             {data?.risk_score.scoring_rationale || "No scoring rationale returned."}
           </p>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-slate-700 bg-slate-950 p-4">
-              <h4 className="font-black text-emerald-300">Executive Decision</h4>
-              <p className="mt-2 text-sm text-slate-300">
-                {data?.risk_score.executive_decision || "Review required"}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-700 bg-slate-950 p-4">
-              <h4 className="font-black text-emerald-300">Top Risk Categories</h4>
-              <ul className="mt-2 space-y-1 text-sm text-slate-300">
-                {(data?.risk_score.top_risk_categories || []).map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </Panel>
 
         <RiskMatrix likelihood={likelihood} impact={impact} />
       </div>
     </section>
+  );
+}
+
+function RiskGauge({ score, level }: { score: number; level: string }) {
+  const gaugeData = [{ name: "Risk", value: score, fill: "#34d399" }];
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-400/20 bg-slate-900 p-6 shadow-2xl shadow-emerald-500/10">
+      <div className="absolute right-[-80px] top-[-80px] h-48 w-48 rounded-full bg-emerald-400/20 blur-3xl" />
+
+      <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+        Executive Risk Score
+      </p>
+
+      <div className="mt-4 flex items-center justify-center">
+        <ResponsiveContainer width="100%" height={240}>
+          <RadialBarChart
+            innerRadius="70%"
+            outerRadius="100%"
+            data={gaugeData}
+            startAngle={180}
+            endAngle={-180}
+          >
+            <RadialBar dataKey="value" cornerRadius={20} background />
+          </RadialBarChart>
+        </ResponsiveContainer>
+
+        <div className="absolute mt-8 text-center">
+          <p className="text-6xl font-black text-white">{score}</p>
+          <p className="text-sm font-bold text-slate-400">/100</p>
+        </div>
+      </div>
+
+      <div className="mt-2 rounded-2xl border border-emerald-400/20 bg-slate-950 p-4 text-center">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+          Risk Level
+        </p>
+        <p className="mt-1 text-2xl font-black text-emerald-300">{level}</p>
+      </div>
+    </div>
+  );
+}
+
+function ExecutiveDecisionCard({
+  level,
+  score,
+  decision,
+}: {
+  level: string;
+  score: number;
+  decision: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
+      <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-500">
+            Deployment Recommendation
+          </p>
+          <h3 className="mt-3 text-4xl font-black text-white">{decision}</h3>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-400">
+            Executive-level risk posture calculated from multi-agent NIST AI RMF analysis,
+            domain intelligence, threat modeling, and scoring synthesis.
+          </p>
+        </div>
+
+        <div className="rounded-3xl border border-emerald-400/20 bg-slate-950 p-5 text-center">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+            Risk Posture
+          </p>
+          <p className="mt-2 text-3xl font-black text-emerald-300">{level}</p>
+          <p className="mt-1 text-slate-400">{score}/100</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RiskDistribution({
+  data,
+}: {
+  data: { name: string; value: number }[];
+}) {
+  const colors = ["#34d399", "#22c55e", "#84cc16", "#eab308", "#f97316"];
+
+  return (
+    <Panel title="Risk Distribution" icon={<Activity className="h-5 w-5" />}>
+      <ResponsiveContainer width="100%" height={250}>
+        <PieChart>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            innerRadius={65}
+            outerRadius={95}
+            paddingAngle={4}
+          >
+            {data.map((entry, index) => (
+              <Cell key={entry.name} fill={colors[index % colors.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {data.map((item, index) => (
+          <div key={item.name} className="rounded-xl bg-slate-950 p-3 text-sm">
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ background: colors[index % colors.length] }}
+              />
+              <span className="text-slate-300">{item.name}</span>
+            </div>
+            <p className="mt-1 font-black text-white">{item.value}%</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 

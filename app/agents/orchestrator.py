@@ -22,6 +22,8 @@ from app.agents.measure_agent import run_measure_agent
 from app.agents.manage_agent import run_manage_agent
 from app.security.keyvault import get_secret
 from app.agents.playbook_agent import run_playbook_agent
+from app.agents.threat_model_agent import run_threat_model_agent
+from app.agents.domain_intelligence_agent import run_domain_intelligence_agent
 
 def extract_unique_sources(*agent_outputs: str) -> str:
     """
@@ -70,10 +72,26 @@ def run_orchestrator(question: str) -> str:
         measure_output,
         manage_output,
     )
+
+    print("Running Domain Intelligence agent...")
+    domain_intelligence_output = run_domain_intelligence_agent(question)
+
     print("Running NIST Playbook agent...")
     playbook_output = run_playbook_agent(
         question,
         "\n\n".join([govern_output, map_output, measure_output, manage_output]),
+    )
+    print("Running Threat Model Intelligence agent...")
+
+    threat_model_output = run_threat_model_agent(
+        question,
+        "\n\n".join([
+            govern_output,
+            map_output,
+            measure_output,
+            manage_output,
+            playbook_output,
+        ]),
     )
 
     client = AzureOpenAI(
@@ -84,6 +102,11 @@ def run_orchestrator(question: str) -> str:
 
     prompt = f"""
 You are the Orchestrator Agent for an AI Risk Advisor system.
+
+If the Domain Intelligence agent identifies a specific domain, the entire report must stay focused on that domain. Do not introduce unrelated industries or examples.
+
+Important domain rule:
+Analyze ONLY the user-provided scenario. Do not combine it with previous examples, default examples, or other industries. If the user scenario is about defense, the report must focus on defense. If it is about finance, the report must focus on finance.
 
 You will receive analysis from four specialist agents aligned with the NIST AI RMF:
 - GOVERN
@@ -113,6 +136,9 @@ NIST AI RMF Playbook agent output:
 
 Verified source pages extracted programmatically:
 {verified_sources}
+
+Threat Model Intelligence agent output:
+{threat_model_output}
 
 Important writing rules:
 - Do not write generic AI safety language.
@@ -155,11 +181,33 @@ Create a concise snapshot:
 - Risk Sensitivity:
 - Likely Deployment Environment:
 
+## Domain Intelligence
+Use the Domain Intelligence agent output as the primary source.
+Do not summarize this section into generic bullets.
+Preserve:
+- Detected Domain
+- Domain-Specific Sensitive Assets
+- Regulatory / Compliance Considerations
+- Failure Scenarios
+- Attack / Misuse Patterns
+- Domain-Specific Controls
+- Domain Intelligence Summary
+
 ## Critical Risk Narrative
 Write a strong narrative explaining the most serious risk paths.
 Do not be generic.
 Explain how failures could occur in the real world.
 Include adversarial misuse, data leakage, hallucination, automation overreliance, compliance failure, and governance breakdown where relevant.
+
+## Threat Model Intelligence
+Use the Threat Model Intelligence agent output as the primary source.
+Include:
+- Critical Assets at Risk
+- Primary Threat Actors
+- Realistic Attack Paths
+- AI-Specific Failure Modes
+- Enterprise Security Controls
+- Residual Risk Warning
 
 ## Top Enterprise Risks
 Create a ranked table:
@@ -168,32 +216,6 @@ Create a ranked table:
 Include 8-10 risks.
 
 ## NIST AI RMF Analysis
-
-### GOVERN
-Explain governance weaknesses, accountability gaps, ownership model, approval gates, escalation paths, audit needs, and policy requirements.
-
-### MAP
-Explain system context, stakeholders, affected groups, data dependencies, third-party dependencies, misuse scenarios, and impact boundaries.
-
-### MEASURE
-Explain what must be tested before deployment:
-- hallucination rate
-- prompt injection resistance
-- data leakage testing
-- bias/fairness testing
-- security testing
-- performance reliability
-- human override effectiveness
-- monitoring metrics
-
-### MANAGE
-Explain how risks should be treated:
-- mitigation plan
-- incident response
-- residual risk acceptance
-- human escalation
-- rollback/decommissioning triggers
-- post-deployment monitoring
 
 ## Risk Register
 Create a detailed markdown table:
@@ -204,7 +226,6 @@ Include 10-12 realistic risks.
 ## Control Implementation Plan
 Create a detailed markdown table:
 | Control | NIST Function | Implementation Detail | Evidence Required | Owner | Timeline |
-
 Include at least 10 controls.
 
 ## NIST Playbook Implementation Guidance
@@ -228,7 +249,6 @@ Create a practical roadmap:
 - First 30 days:
 - Days 31-60:
 - Days 61-90:
-
 Each phase should include governance, testing, security, monitoring, and stakeholder actions.
 
 ## Executive Decision
@@ -243,6 +263,12 @@ Then explain why in 4-6 sentences.
 ## Sources
 Use ONLY the verified source pages provided above and Playbook source URLs.
 Do not invent additional sources.
+
+The Threat Model Intelligence section must appear BEFORE Top Enterprise Risks.
+Do not place Threat Model Intelligence after Sources.
+Sources must always be the final section.
+Do not shorten this into generic security bullets.
+
 """
 
     response = client.chat.completions.create(
