@@ -513,6 +513,16 @@ function Dashboard({
         {metrics && <RiskDistribution data={metrics.category_distribution} />}
       </div>
 
+      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <ThreatLandscape />
+
+        <AttackPathVisualization />
+      </div>
+
+      <ReadinessScore score={Math.round((chartData.reduce((sum, item) => sum + item.score, 0) / Math.max(chartData.length, 1)) || 0)} />
+
+      <AgentExecutionTimeline />
+
       {metrics && (
         <div className="grid gap-6 xl:grid-cols-2">
           <Panel title="Top 5 Enterprise Risks" icon={<AlertTriangle className="h-5 w-5" />}>
@@ -707,6 +717,116 @@ function RiskDistribution({
               <span className="text-slate-300">{item.name}</span>
             </div>
             <p className="mt-1 font-black text-white">{item.value}%</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function ThreatLandscape() {
+  const threats = [
+    "Prompt Injection",
+    "Sensitive Data Exposure",
+    "API Abuse",
+    "Insider Misuse",
+    "Model Hallucination",
+  ];
+
+  return (
+    <Panel title="Threat Landscape" icon={<AlertTriangle className="h-5 w-5" />}>
+      <div className="grid gap-3 md:grid-cols-2">
+        {threats.map((threat) => (
+          <div
+            key={threat}
+            className="rounded-2xl border border-red-400/20 bg-red-500/10 p-4"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-red-300">
+              High Risk
+            </p>
+            <p className="mt-2 font-black text-white">{threat}</p>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function AttackPathVisualization() {
+  const steps = [
+    "Threat Actor",
+    "Prompt/API Abuse",
+    "Model Manipulation",
+    "Data Exposure",
+    "Business Impact",
+  ];
+
+  return (
+    <Panel title="Attack Path" icon={<Network className="h-5 w-5" />}>
+      <div className="space-y-3">
+        {steps.map((step, index) => (
+          <div key={step}>
+            <div className="rounded-2xl border border-emerald-400/20 bg-slate-950 p-4 text-center">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+                Step {index + 1}
+              </p>
+              <p className="mt-1 font-black text-emerald-300">{step}</p>
+            </div>
+
+            {index < steps.length - 1 && (
+              <div className="mx-auto h-6 w-px bg-emerald-400/40" />
+            )}
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+function ReadinessScore({ score }: { score: number }) {
+  return (
+    <Panel title="AI Governance Readiness" icon={<ShieldCheck className="h-5 w-5" />}>
+      <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-5xl font-black text-white">{score}%</p>
+          <p className="mt-2 text-sm text-slate-400">
+            Readiness calculated from GOVERN, MAP, MEASURE, and MANAGE maturity.
+          </p>
+        </div>
+
+        <div className="w-full md:max-w-xl">
+          <div className="h-5 rounded-full bg-slate-800">
+            <div
+              className="h-5 rounded-full bg-gradient-to-r from-emerald-500 to-lime-300 shadow-[0_0_18px_rgba(52,211,153,.55)]"
+              style={{ width: `${score}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function AgentExecutionTimeline() {
+  const steps = [
+    "Scenario Intake",
+    "NIST RAG Retrieval",
+    "Domain Intelligence",
+    "Threat Modeling",
+    "Risk Scoring",
+    "Executive Report",
+  ];
+
+  return (
+    <Panel title="Agent Execution Timeline" icon={<Cpu className="h-5 w-5" />}>
+      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {steps.map((step, index) => (
+          <div key={step} className="relative rounded-2xl border border-emerald-400/20 bg-slate-950 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">
+              Step {index + 1}
+            </p>
+            <p className="mt-3 font-black text-white">{step}</p>
+            <div className="mt-4 h-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]" />
           </div>
         ))}
       </div>
