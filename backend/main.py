@@ -28,7 +28,10 @@ api = FastAPI(
 
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://nice-moss-085504f0f.7.azurestaticapps.net"],  # tighten later for production
+    allow_origins=[
+        "http://localhost:3000",
+        "https://nice-moss-085504f0f.7.azurestaticapps.net",
+    ],  # tighten later for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
