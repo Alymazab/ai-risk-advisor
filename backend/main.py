@@ -40,6 +40,17 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
+@api.get("/cors-test")
+def cors_test():
+    return {
+        "cors": "enabled",
+        "origins": [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "https://nice-moss-085504f0f.7.azurestaticapps.net"
+        ]
+    }
+
 
 @api.get("/")
 def root():
