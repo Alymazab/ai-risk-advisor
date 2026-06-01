@@ -64,7 +64,8 @@ type AnalyzeResponse = {
   dashboard_metrics?: DashboardMetrics;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
+const API_BASE =
+  "https://ai-risk-advisor-api-cjfuheaafadsgdec.canadacentral-01.azurewebsites.net";
 
 const scenarios = [
   {
